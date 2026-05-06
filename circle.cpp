@@ -52,7 +52,7 @@ void server_thread(uint16_t port) {
     addr.sin_addr.s_addr = INADDR_ANY; // accessible on local Wi-Fi
     addr.sin_port = htons(port);
 
-    if (bind(srv, (sockaddr*)&addr, sizeof(addr)) < 0) {
+    if (::bind(srv, (sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("bind");
         close(srv);
         return;
