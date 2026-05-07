@@ -2,8 +2,9 @@
 #include <iostream>
 
 int main() {
-	cv::VideoCapture cap("rtsp://tocatta:8554/cam?tcp", cv::CAP_FFMPEG);
+	cv::VideoCapture cap;
 	cap.set(cv::CAP_PROP_BUFFERSIZE, 1);
+	cap.open("rtsp://tocatta:8554/cam?tcp", cv::CAP_FFMPEG);
 
 	if (!cap.isOpened()) {
 		std::cerr << "Failed to open stream" << std::endl;
