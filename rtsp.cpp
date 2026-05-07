@@ -11,12 +11,10 @@ int main() {
 	}
 
 	cv::Mat frame;
-	while (true) {
-		cap >> frame;
-		if (frame.empty()) break;
-
+	while (cap.read(frame) && !frame.empty()) {
 		cv::imshow("frame", frame);
-		if ((cv::waitKey(1) & 0xFF) == 'q') break;
+		if ((cv::waitKey(1) & 0xFF) == 'q')
+			break;
 	}
 
 	cap.release();
