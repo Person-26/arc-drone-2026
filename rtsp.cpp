@@ -4,10 +4,21 @@
 
 using namespace cv;
 
-int main() {
-	static const int targetWidth = 640;
-    static const int targetHeight = 480;
+int main(int argc, char *argv[]) {
+	int threshold = 10000;
+	int saturation = 150;
 
+	for (int i = 1; i < argc; i++) {
+		if (std::string(argv[i]) == "--threshold" && i + 1 < argc)
+			threshold = std::stoi(argv[++i]);
+		else if (std::string(argv[i]) == "--saturation" && i + 1 < argc)
+			saturation = std::stoi(argv[++i]);
+		else {
+			std::cerr << "Usage: " << argv[0] << " [--threshold N] [--saturation N]" << std::endl;
+			return 1;
+		}
+	}
+	
 	VideoCapture cap;
 	cap.set(CAP_PROP_BUFFERSIZE, 1);
 	cap.open("rtsp://tocatta:8554/cam?tcp", CAP_FFMPEG);
@@ -25,36 +36,24 @@ int main() {
 
         // Threshold red color (red wraps around HSV hue range)
         Mat redMask1, redMask2, redMask;
-        inRange(hsv, Scalar(0, 120, 70), Scalar(10, 255, 255), redMask1);
-        inRange(hsv, Scalar(170, 120, 70), Scalar(180, 255, 255), redMask2);
+		inRange(hsv, Scalar(0,   saturation, 100), Scalar(10,  255, 255), redMask1);
+		inRange(hsv, Scalar(170, saturation, 100), Scalar(180, 255, 255), redMask2);
         bitwise_or(redMask1, redMask2, redMask);
 
-        // Clean mask noise and smooth edges
-        Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
-        morphologyEx(redMask, redMask, MORPH_OPEN, kernel);
-        morphologyEx(redMask, redMask, MORPH_CLOSE, kernel);
+		// Find contours
+        std::vector<std::vector<Point>> contours;
+        findContours(redMask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-        Mat blurred;
-        GaussianBlur(redMask, blurred, Size(9, 9), 2, 2);
-
-        // Detect circles on red regions
-		std::vector<Vec3f> circles;
-        HoughCircles(blurred, circles, HOUGH_GRADIENT, 1, 50,
-                    120, 20, 10, 300);
-
-        // Draw detected circles
-        for (size_t i = 0; i < circles.size(); i++) {
-            Vec3i c = circles[i];
-            circle(frame, Point(c[0], c[1]), c[2], Scalar(0, 255, 0), 2);
-            circle(frame, Point(c[0], c[1]), 2, Scalar(255, 255, 255), 3);
+        for (auto& contour : contours) {
+            double area = contourArea(contour);
+            if (area > threshold) {  // tune this threshold
+                Rect bbox = boundingRect(contour);
+                rectangle(frame, bbox, Scalar(0, 255, 0), 2);
+                std::cout << "Red area detected: " << area << " px\n";
+            }
         }
 
-        // Encode frame as JPEG
-        // Resize to target resolution to reduce encoding size/latency
-        Mat outFrame;
-        resize(frame, outFrame, Size(targetWidth, targetHeight));
-
-		imshow("frame", outFrame);
+		imshow("frame", frame);
 		if ((waitKey(1) & 0xFF) == 'q')
 			break;
 	}
